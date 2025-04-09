@@ -5,7 +5,12 @@ fn read_file(path: &str) -> String {
 fn load_data(str: String) -> Vec<Line> {
     let mut data: Vec<Line> = vec![];
     for line in str.split('\n') {
-        let mut parts = line.split(';');
+        #[cfg(debug_assertions)]
+        println!("Reading line: {}", line);
+        if line == "" {
+            continue;
+        }
+        let mut parts = line.split(',');
         let sepal_length = parts
             .next()
             .expect("Failed to get Sepal Length")
@@ -49,12 +54,14 @@ fn classify_class(str: &str) -> Option<Classes> {
     }
 }
 
+#[derive(Debug)]
 enum Classes {
     Setosa,
     Versicolour,
     Virginica,
 }
 
+#[derive(Debug)]
 struct Line {
     sepal_length: f32,
     sepal_width: f32,
@@ -64,6 +71,7 @@ struct Line {
 }
 
 fn main() {
-    let model_data = read_file("/home/jhin/Downloads/iris/iris.data");
-    println!("Hello, world!");
+    let model_file_data: String = read_file("/home/jhin/Downloads/iris/iris.data");
+    let model_data: Vec<Line> = load_data(model_file_data);
+    println!("{:?}", model_data[0]);
 }
