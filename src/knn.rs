@@ -5,24 +5,41 @@ pub mod prelude {
 
 pub struct Knn {
     file_path: String,
+    file_content: Vec<String>,
     pub dataset: Vec<Line>,
+    pub test_dataset: Vec<Line>,
 }
 
 impl Knn {
     pub fn new() -> Self {
         Self {
             file_path: "".to_string(),
+            file_content: vec![],
             dataset: vec![],
+            test_dataset: vec![],
         }
     }
 
     pub fn read_file(&mut self, path: &str) {
-        self.file_path = std::fs::read_to_string(path).expect("Couldn't read the file.");
+        self.file_path = path.to_string();
+        self.file_content = Knn::prepare_data(
+            std::fs::read_to_string(path).expect("Couldn't read the file."),
+            '\n',
+        );
+        // self.file_content = std::fs::read_to_string(path).expect("Couldn't read the file.");
     }
 
-    pub fn load_data(&mut self) {
+    fn prepare_data(data: String, delim: char) -> Vec<String> {
+        data.split(delim).map(|x| x.to_string()).collect()
+    }
+
+    pub fn load_data(&mut self, k: usize) {
+        assert!(
+            (0..=100).contains(&k),
+            "\"k\" not in the corrent range: 0 to 100."
+        );
         let mut data: Vec<Line> = vec![];
-        for line in self.file_path.split('\n') {
+        for line in &self.file_content {
             if line.is_empty() {
                 continue;
             }
@@ -58,7 +75,13 @@ impl Knn {
             };
             data.push(current);
         }
-        self.dataset = data;
+
+        use rand::seq::SliceRandom;
+
+        data.shuffle(&mut rand::rng());
+        let (test, train) = data.split_at(k);
+        self.test_dataset = test.to_vec();
+        self.dataset = train.to_vec();
     }
 
     pub fn guess_class(&self, detect: &Line, k: usize) -> Classes {
@@ -100,6 +123,24 @@ impl Knn {
         // self.dataset[min_element.1].class.clone()
     }
 
+    pub fn verify_train_accuracy(&self, k: usize) {
+        let total = self.test_dataset.len();
+        let mut correct: f32 = 0.;
+
+        for item in &self.test_dataset {
+            let guessed = self.guess_class(item, k);
+            if guessed == item.class {
+                correct += 1.;
+            }
+        }
+        println!(
+            "Test accuracy: {}/{} -> {}%",
+            correct,
+            total,
+            total as f32 / correct
+        )
+    }
+
     fn classify_class(str: &str) -> Option<Classes> {
         match str {
             "Iris-virginica" => Some(Classes::Virginica),
@@ -117,7 +158,7 @@ pub enum Classes {
     Virginica,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Line {
     pub sepal_length: f32,
     pub sepal_width: f32,
