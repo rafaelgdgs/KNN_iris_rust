@@ -5,8 +5,8 @@ pub mod prelude {
 pub struct Knn {
     file_path: String,
     file_content: Vec<String>,
-    pub dataset: Vec<Line>,
-    pub test_dataset: Vec<Line>,
+    dataset: Vec<Line>,
+    test_dataset: Vec<Line>,
 }
 
 impl Knn {
