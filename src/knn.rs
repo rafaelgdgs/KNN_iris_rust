@@ -1,6 +1,5 @@
 pub mod prelude {
     pub use super::Knn;
-    pub use super::{Classes, Line};
 }
 
 pub struct Knn {
@@ -26,7 +25,6 @@ impl Knn {
             std::fs::read_to_string(path).expect("Couldn't read the file."),
             '\n',
         );
-        // self.file_content = std::fs::read_to_string(path).expect("Couldn't read the file.");
     }
 
     fn prepare_data(data: String, delim: char) -> Vec<String> {
@@ -114,13 +112,6 @@ impl Knn {
             .max_by_key(|&(_, count)| count)
             .map(|(valor, _)| valor)
             .expect("Failed to get most frequent one")
-
-        // let min_element = distances
-        //     .iter()
-        //     .min_by(|a, b| a.0.partial_cmp(&b.0).expect("Failed to compare keys"))
-        //     .expect("Failed to get min distance");
-        // // println!("{}, {}", min_element.0, min_element.1);
-        // self.dataset[min_element.1].class.clone()
     }
 
     pub fn verify_train_accuracy(&self, k: usize) {
@@ -137,7 +128,7 @@ impl Knn {
             "Test accuracy: {}/{} -> {}%",
             correct,
             total,
-            total as f32 / correct
+            (correct / total as f32) * 100.
         )
     }
 
