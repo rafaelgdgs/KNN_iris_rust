@@ -5,7 +5,8 @@ pub mod prelude {
 pub struct Knn {
     file_path: String,
     file_content: Vec<String>,
-    dataset: Vec<Line>,
+    full_dataset: Vec<Line>,
+    train_dataset: Vec<Line>,
     test_dataset: Vec<Line>,
 }
 
@@ -14,7 +15,8 @@ impl Knn {
         Self {
             file_path: "".to_string(),
             file_content: vec![],
-            dataset: vec![],
+            full_dataset: vec![],
+            train_dataset: vec![],
             test_dataset: vec![],
         }
     }
@@ -31,11 +33,7 @@ impl Knn {
         data.split(delim).map(|x| x.to_string()).collect()
     }
 
-    pub fn load_data(&mut self, k: usize) {
-        assert!(
-            (0..=100).contains(&k),
-            "\"k\" not in the corrent range: 0 to 100."
-        );
+    pub fn load_data(&mut self) {
         let mut data: Vec<Line> = vec![];
         for line in &self.file_content {
             if line.is_empty() {
@@ -73,20 +71,30 @@ impl Knn {
             };
             data.push(current);
         }
+        self.full_dataset = data;
+    }
+
+    fn randomize_dataset(&mut self, test_percentage: usize) {
+        assert!(
+            (0..=100).contains(&test_percentage),
+            "\"Test Percentage\" not in the corrent range: 0 to 100."
+        );
 
         use rand::seq::SliceRandom;
 
+        let mut data = self.full_dataset.clone();
+
         data.shuffle(&mut rand::rng());
-        let (test, train) = data.split_at(k);
+        let (test, train) = data.split_at(test_percentage);
         self.test_dataset = test.to_vec();
-        self.dataset = train.to_vec();
+        self.train_dataset = train.to_vec();
     }
 
-    pub fn guess_class(&self, detect: &Line, k: usize) -> Classes {
+    pub fn guess_class(&self, detect: &Line, neighbors: usize) -> Classes {
         use std::collections::HashMap;
 
         let mut distances: Vec<(f32, usize)> = vec![];
-        for (index, item) in self.dataset.iter().enumerate() {
+        for (index, item) in self.train_dataset.iter().enumerate() {
             let dist1 = (item.sepal_length - detect.sepal_length).abs();
             let dist2 = (item.sepal_width - detect.sepal_width).abs();
             let dist3 = (item.petal_length - detect.petal_length).abs();
@@ -99,11 +107,11 @@ impl Knn {
                 .expect("Failed to order the distances vector.")
         });
 
-        let k_elements: Vec<(f32, usize)> = distances.into_iter().take(k).collect();
+        let k_elements: Vec<(f32, usize)> = distances.into_iter().take(neighbors).collect();
         let mut hash_counter: HashMap<Classes, i32> = HashMap::new();
         for &valor in &k_elements {
             *hash_counter
-                .entry(self.dataset[valor.1].class.clone())
+                .entry(self.train_dataset[valor.1].class.clone())
                 .or_insert(0) += 1;
         }
 
@@ -114,22 +122,39 @@ impl Knn {
             .expect("Failed to get most frequent one")
     }
 
-    pub fn verify_train_accuracy(&self, k: usize) {
-        let total = self.test_dataset.len();
-        let mut correct: f32 = 0.;
+    pub fn verify_train_accuracy(
+        &mut self,
+        neighbors: usize,
+        test_percentage: usize,
+        iterations: usize,
+    ) {
+        let mut outside_correct: usize = 0;
+        let mut outside_total: usize = 0;
 
-        for item in &self.test_dataset {
-            let guessed = self.guess_class(item, k);
-            if guessed == item.class {
-                correct += 1.;
+        for _ in 0..iterations {
+            self.randomize_dataset(test_percentage);
+            let total = self.test_dataset.len();
+            let mut correct: usize = 0;
+
+            for item in &self.test_dataset {
+                let guessed = self.guess_class(item, neighbors);
+                if guessed == item.class {
+                    correct += 1;
+                }
             }
+
+            outside_correct += correct;
+            outside_total += total;
         }
         println!(
-            "Test accuracy: {}/{} -> {}%",
-            correct,
-            total,
-            (correct / total as f32) * 100.
-        )
+            "Result of {:4} iterations test with {:2} neighbors and {:2} test_percentage: {}/{} -> {:.2}%",
+            iterations,
+            neighbors,
+            test_percentage,
+            outside_correct,
+            outside_total,
+            (outside_correct as f32 / outside_total as f32) * 100.
+        );
     }
 
     fn classify_class(str: &str) -> Option<Classes> {
